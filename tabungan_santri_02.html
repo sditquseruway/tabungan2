@@ -1,0 +1,1134 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Tabungan Santri - YHWNQ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'bank-green': '#15803d',
+                        'bank-green-light': '#22c55e',
+                        'bank-yellow': '#eab308',
+                        'bank-yellow-light': '#fef08a',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .loader {
+            border-top-color: #eab308;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .glass-card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid #f1f5f9;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-bank-green text-white shadow-md sticky top-0 z-40">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-bank-yellow text-bank-green p-2 rounded-lg shadow-sm">
+                    <i class="fas fa-wallet text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg md:text-xl font-bold tracking-tight leading-tight">Tabungan Santri</h1>
+                    <p class="text-[10px] text-bank-yellow-light hidden sm:block font-medium">YAYASAN HUDA WAN NURUL QUR'ANI</p>
+                </div>
+            </div>
+            <div class="flex space-x-1 md:space-x-2">
+                 <button onclick="showMainTab('dashboard')" class="hover:bg-green-800 px-2 py-2 rounded-md transition-colors text-xs md:text-sm font-semibold flex items-center">
+                    <i class="fas fa-search md:mr-1"></i> <span class="hidden md:inline">Cari</span>
+                </button>
+                <button onclick="showMainTab('cetak')" class="hover:bg-green-800 px-2 py-2 rounded-md transition-colors text-xs md:text-sm font-semibold flex items-center">
+                    <i class="fas fa-print md:mr-1"></i> <span class="hidden md:inline">Cetak</span>
+                </button>
+                <button onclick="showMainTab('administrasi')" class="bg-bank-yellow hover:bg-yellow-400 text-bank-green px-3 py-2 rounded-md transition-colors text-xs md:text-sm font-bold flex items-center">
+                    <i class="fas fa-chart-pie md:mr-1"></i> <span class="hidden md:inline">Admin</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white/90 z-50 flex flex-col items-center justify-center backdrop-blur-sm">
+        <div class="loader ease-linear rounded-full border-8 border-t-8 border-slate-200 h-20 w-20 mb-4"></div>
+        <h2 class="text-center text-xl font-bold text-bank-green">Sinkronisasi Data...</h2>
+        <p class="text-slate-500 mt-2 text-sm">Menghubungkan ke Google Sheets</p>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow container mx-auto px-4 py-6 md:py-8 max-w-7xl relative">
+        
+        <!-- ======================= -->
+        <!-- TAB 1: PENCARIAN (DASHBOARD) -->
+        <!-- ======================= -->
+        <div id="dashboard" class="main-tab block">
+            <div id="searchSection" class="glass-card p-6 md:p-8 border-t-4 border-bank-yellow max-w-3xl mx-auto transition-all duration-300">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl md:text-3xl font-bold text-bank-green mb-2">Cek Saldo Tabungan</h2>
+                    <p class="text-slate-500">Ketik nama santri untuk melihat rincian tabungan</p>
+                </div>
+
+                <div class="relative">
+                    <div class="relative flex items-center">
+                        <i class="fas fa-search absolute left-4 text-slate-400 text-lg"></i>
+                        <input type="text" id="searchInput" onkeyup="handleSearchInput()" autocomplete="off"
+                            class="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-slate-200 focus:border-bank-green focus:ring-4 focus:ring-green-50 focus:outline-none transition-all text-lg font-medium text-slate-700 shadow-sm"
+                            placeholder="Ketik nama santri di sini...">
+                        <button id="clearSearch" onclick="clearSearchInput()" class="absolute right-4 text-slate-400 hover:text-red-500 hidden">
+                            <i class="fas fa-times-circle text-xl"></i>
+                        </button>
+                    </div>
+
+                    <!-- Autocomplete Suggestions Dropdown -->
+                    <div id="suggestionsDropdown" class="absolute w-full mt-2 bg-white rounded-xl shadow-xl border border-slate-100 max-h-80 overflow-y-auto hidden z-40">
+                        <ul id="suggestionList" class="divide-y divide-slate-100"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div id="detailSection" class="hidden animate-fade-in-up">
+                <button onclick="closeDetail()" class="mb-6 group flex items-center text-slate-500 hover:text-bank-green font-semibold transition-colors bg-white px-4 py-2 rounded-full shadow-sm border border-slate-200 w-fit">
+                    <i class="fas fa-arrow-left mr-2 group-hover:-translate-x-1 transition-transform"></i> Kembali ke Pencarian
+                </button>
+                <div class="glass-card overflow-hidden border-t-8 border-bank-green relative" id="detailContent"></div>
+            </div>
+        </div>
+
+        <!-- ======================= -->
+        <!-- TAB 2: MENU CETAK BUKTI  -->
+        <!-- ======================= -->
+        <div id="cetak" class="main-tab hidden">
+            <div class="glass-card p-6 md:p-8 border-t-4 border-bank-green">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-100 pb-4 mb-6 gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">Cetak Bukti Penarikan</h2>
+                        <p class="text-slate-500 text-sm mt-1">Sistem otomatis membagi 3 santri per halaman A4 (Terurut dari tabungan tertinggi)</p>
+                    </div>
+                    <button onclick="previewAndPrint()" class="w-full md:w-auto bg-bank-green hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center transform hover:-translate-y-0.5">
+                        <i class="fas fa-external-link-alt mr-2"></i> Preview & Cetak
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Filter Kelas</label>
+                        <select id="filterKelasCetak" onchange="applyPrintFilters()" class="w-full p-3 rounded-lg border border-slate-300 focus:border-bank-green focus:outline-none bg-white">
+                            <option value="ALL">Semua Kelas</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cari Nama</label>
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-3.5 text-slate-400"></i>
+                            <input type="text" id="filterNama" onkeyup="applyPrintFilters()" placeholder="Ketik nama untuk menyaring..." class="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 focus:border-bank-green focus:outline-none bg-white">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border border-slate-200 rounded-xl overflow-hidden bg-white flex flex-col">
+                    <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex justify-between items-center sticky top-0 z-10">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="checkAll" onchange="toggleAllCheckboxes()" class="w-5 h-5 text-bank-green rounded cursor-pointer">
+                            <label for="checkAll" class="ml-3 font-semibold text-slate-700 cursor-pointer select-none">Pilih Semua</label>
+                        </div>
+                        <span class="text-sm bg-bank-yellow text-bank-green font-bold py-1 px-3 rounded-full shadow-sm">
+                            <span id="selectedCountCetak">0</span> Terpilih
+                        </span>
+                    </div>
+                    <div class="max-h-[50vh] overflow-y-auto p-2" id="printListContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================= -->
+        <!-- TAB 3: ADMINISTRASI     -->
+        <!-- ======================= -->
+        <div id="administrasi" class="main-tab hidden">
+            <div class="glass-card p-6 border-t-4 border-bank-yellow shadow-sm mb-6">
+                <h2 class="text-2xl font-bold text-slate-800 mb-4">Menu Administrasi</h2>
+                
+                <!-- Sub Menu Navigation -->
+                <div class="flex flex-wrap gap-2 border-b border-slate-200 pb-4">
+                    <button id="btnTabStatistik" onclick="switchAdminTab('statistik')" class="bg-bank-green text-white px-5 py-2.5 rounded-lg font-semibold transition-colors flex items-center">
+                        <i class="fas fa-chart-line mr-2"></i> Statistik Tabungan
+                    </button>
+                    <button id="btnTabAbsen" onclick="switchAdminTab('absen')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-lg font-semibold transition-colors flex items-center">
+                        <i class="fas fa-list-alt mr-2"></i> Cetak Absen Pengambilan
+                    </button>
+                </div>
+            </div>
+
+            <!-- Panel Statistik -->
+            <div id="panelStatistik" class="admin-panel block">
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center">
+                        <div class="bg-blue-100 text-blue-600 p-4 rounded-full mr-4"><i class="fas fa-money-bill-wave text-2xl"></i></div>
+                        <div>
+                            <p class="text-xs text-slate-500 font-bold uppercase">Total Terkumpul</p>
+                            <p class="text-xl font-extrabold text-slate-800" id="statTotalUang">Rp 0</p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center">
+                        <div class="bg-green-100 text-green-600 p-4 rounded-full mr-4"><i class="fas fa-trophy text-2xl"></i></div>
+                        <div>
+                            <p class="text-xs text-slate-500 font-bold uppercase">Tabungan Terbanyak</p>
+                            <p class="text-xl font-extrabold text-slate-800" id="statMaxUang">Rp 0</p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center">
+                        <div class="bg-yellow-100 text-yellow-700 p-4 rounded-full mr-4"><i class="fas fa-users text-2xl"></i></div>
+                        <div>
+                            <p class="text-xs text-slate-500 font-bold uppercase">Total Santri</p>
+                            <p class="text-xl font-extrabold text-slate-800"><span id="statTotalSantri">0</span> <span class="text-sm font-normal text-slate-500">Orang</span></p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center">
+                        <div class="bg-red-100 text-red-600 p-4 rounded-full mr-4"><i class="fas fa-cut text-2xl"></i></div>
+                        <div>
+                            <p class="text-xs text-slate-500 font-bold uppercase">Total Potongan</p>
+                            <p class="text-xl font-extrabold text-slate-800" id="statTotalPotongan">Rp 0</p>
+                            <p class="text-sm font-bold text-bank-green mt-1">Diserahkan: <span id="statDanaDiserahkan">Rp 0</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grouped by Keterangan Ambil -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-8">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center"><i class="fas fa-layer-group mr-2 text-bank-yellow"></i> Rekap Berdasarkan Keterangan Ambil <span class="text-xs font-normal text-slate-500 ml-2">(klik kartu untuk lihat & cetak daftar)</span></h3>
+                    <div id="statGroupedContainer" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
+                </div>
+
+                <!-- Modal Detail Group -->
+                <div id="groupModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+                        <div class="bg-bank-green text-white px-6 py-4 flex justify-between items-center">
+                            <div>
+                                <h3 class="text-lg font-bold" id="groupModalTitle">Daftar Siswa</h3>
+                                <p class="text-xs text-bank-yellow-light" id="groupModalSubtitle"></p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="printGroupList()" class="bg-bank-yellow text-bank-green font-bold py-2 px-4 rounded-lg text-sm hover:bg-yellow-300 transition"><i class="fas fa-print mr-1"></i> Cetak</button>
+                                <button onclick="closeGroupModal()" class="text-white hover:text-bank-yellow text-2xl leading-none px-2">&times;</button>
+                            </div>
+                        </div>
+                        <div class="overflow-y-auto p-4">
+                            <table class="w-full text-sm">
+                                <thead class="bg-slate-100 text-slate-600 uppercase text-xs sticky top-0">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left w-12">No</th>
+                                        <th class="px-3 py-2 text-left">Nama Siswa</th>
+                                        <th class="px-3 py-2 text-left">Kelas</th>
+                                        <th class="px-3 py-2 text-right">Jumlah Tabungan</th>
+                                        <th class="px-3 py-2 text-right">Potongan</th>
+                                        <th class="px-3 py-2 text-right">Diserahkan</th>
+                                        <th class="px-3 py-2 text-center">Ket</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="groupModalBody" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leaderboard -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
+                        <h3 class="font-bold text-slate-800 flex items-center"><i class="fas fa-list-ol mr-2 text-bank-yellow"></i> Urutan Siswa Tabungan Terbanyak (Peringkat 1 - 499)</h3>
+                    </div>
+                    <div class="overflow-x-auto max-h-96">
+                        <table class="w-full text-left text-sm text-slate-600">
+                            <thead class="bg-slate-100 text-xs uppercase text-slate-500 sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th class="px-6 py-3">Peringkat</th>
+                                    <th class="px-6 py-3">Nama Santri</th>
+                                    <th class="px-6 py-3">Kelas Tahfizh / SD</th>
+                                    <th class="px-6 py-3 text-right">Total Tabungan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboardBody" class="divide-y divide-slate-100">
+                                <!-- Injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Cetak Absen -->
+            <div id="panelAbsen" class="admin-panel hidden">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-bold text-slate-800 mb-4 text-lg border-b pb-2">Pengaturan Cetak Absen Pengambilan</h3>
+                    <div class="flex flex-col sm:flex-row gap-4 items-end">
+                        <div class="flex-grow">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pilih Kelas</label>
+                            <select id="filterKelasAbsen" class="w-full p-3 rounded-lg border border-slate-300 focus:border-bank-green focus:outline-none bg-white">
+                                <option value="ALL">Semua Kelas</option>
+                                <!-- Injected via JS -->
+                            </select>
+                        </div>
+                        <button onclick="printAbsen()" class="bg-bank-green hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow transition-all flex items-center justify-center whitespace-nowrap">
+                            <i class="fas fa-file-excel mr-2"></i> Buat Halaman Cetak Absen
+                        </button>
+                    </div>
+                    <div class="mt-4 p-4 bg-blue-50 text-blue-700 rounded-lg text-sm flex items-start">
+                        <i class="fas fa-info-circle mt-0.5 mr-2"></i>
+                        <p>Format yang dicetak berupa tabel absen (*Landscape* A4) dengan kolom kosong untuk pengisian <b>Infaq</b> dan <b>Tanda Tangan</b> wali murid.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT-rmMiY47LO_kXRnNXKRrWDe1PM5QkXJOjdXPLA6DuSnandrnk0sTXVxPMN0pC1A/pub?gid=380190631&single=true&output=csv';
+        let globalData = [];
+        let printFilteredData = [];
+        let listKelas = new Set();
+
+        window.onload = () => {
+            fetchData();
+            document.addEventListener('click', function(event) {
+                const searchInput = document.getElementById('searchInput');
+                const dropdown = document.getElementById('suggestionsDropdown');
+                if (event.target !== searchInput && !dropdown.contains(event.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        };
+
+        function showMainTab(tabId) {
+            document.querySelectorAll('.main-tab').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+            
+            if(tabId === 'dashboard') closeDetail();
+            else if (tabId === 'cetak') applyPrintFilters();
+        }
+
+        function switchAdminTab(panel) {
+            document.querySelectorAll('.admin-panel').forEach(el => el.classList.add('hidden'));
+            document.getElementById('btnTabStatistik').classList.replace('bg-bank-green', 'bg-slate-100');
+            document.getElementById('btnTabStatistik').classList.replace('text-white', 'text-slate-700');
+            document.getElementById('btnTabAbsen').classList.replace('bg-bank-green', 'bg-slate-100');
+            document.getElementById('btnTabAbsen').classList.replace('text-white', 'text-slate-700');
+
+            if (panel === 'statistik') {
+                document.getElementById('panelStatistik').classList.remove('hidden');
+                document.getElementById('btnTabStatistik').classList.replace('bg-slate-100', 'bg-bank-green');
+                document.getElementById('btnTabStatistik').classList.replace('text-slate-700', 'text-white');
+            } else {
+                document.getElementById('panelAbsen').classList.remove('hidden');
+                document.getElementById('btnTabAbsen').classList.replace('bg-slate-100', 'bg-bank-green');
+                document.getElementById('btnTabAbsen').classList.replace('text-slate-700', 'text-white');
+            }
+        }
+
+        function fetchData() {
+            const fetchUrl = CSV_URL + '&t=' + new Date().getTime();
+            fetch(fetchUrl)
+                .then(res => res.text())
+                .then(csvText => {
+                    Papa.parse(csvText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: function(results) { processData(results.data); }
+                    });
+                }).catch(err => {
+                    alert("Gagal mengambil data dari server.");
+                    document.getElementById('loadingOverlay').classList.add('hidden');
+                });
+        }
+
+        function cleanToNumber(str) {
+            if (!str) return 0;
+            let num = parseInt(str.toString().replace(/Rp/gi, '').replace(/\./g, '').replace(/,/g, '').trim(), 10);
+            return isNaN(num) ? 0 : num;
+        }
+
+        function formatRupiah(number) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
+        }
+
+        function processData(rawData) {
+            let temp = rawData.map(row => {
+                const normRow = {};
+                for(let key in row) if(key) normRow[key.trim().toUpperCase()] = row[key];
+                
+                let kelasT = normRow['KELAS TAHFIZH'] || normRow['KELAS TAHFIDZ'] || '';
+                let kelasS = normRow['KELAS SD'] || normRow['KELAS'] || '';
+                
+                if(kelasT.trim() !== '') listKelas.add(kelasT.trim());
+                if(kelasS.trim() !== '') listKelas.add(kelasS.trim());
+
+                let numLalu = cleanToNumber(normRow['TAHUN LALU'] || normRow['SALDO TAHUN LALU'] || '0');
+                let numReal = cleanToNumber(normRow['TABUNGAN REAL'] || normRow['TABUNGAN'] || '0');
+                let numPotongan = cleanToNumber(normRow['POTONGAN'] || '0');
+                let totalHitung = numLalu + numReal;
+                let danaDiserahkan = totalHitung - numPotongan;
+
+                return {
+                    id: Math.random().toString(36).substr(2, 9),
+                    nama: normRow['NAMA'] || normRow['NAMA SANTRI'] || '',
+                    kelasTahfizh: kelasT,
+                    waliKelasTahfizh: normRow['WALI KELAS TAHFIZH'] || normRow['WALI TAHFIZH'] || '',
+                    kelasSD: kelasS,
+                    waliKelasSD: normRow['WALI KELAS SD'] || normRow['WALI SD'] || '',
+                    tahunLaluNum: numLalu,
+                    tabunganRealNum: numReal,
+                    jumlahTotalNum: totalHitung,
+                    potonganNum: numPotongan,
+                    danaDiserahkanNum: danaDiserahkan,
+                    keteranganAmbil: (normRow['KETERANGAN AMBIL DAN TDK'] || normRow['KETERANGAN AMBIL'] || '').toString().trim(),
+                    keterangan: (normRow['KETERANGAN'] || '').toString().trim()
+                };
+            }).filter(item => item.nama && item.nama.trim() !== '');
+
+            // URUTKAN BERDASARKAN TABUNGAN TERBANYAK (Descending)
+            temp.sort((a, b) => b.jumlahTotalNum - a.jumlahTotalNum);
+            
+            // Berikan peringkat
+            globalData = temp.map((item, index) => {
+                item.peringkat = index + 1;
+                return item;
+            });
+
+            populateKelasFilters();
+            calculateStatistics();
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        let groupedByKet = {};
+
+        function normalizeKetKey(val) {
+            const t = (val || '').toString().trim();
+            return t === '' ? 'Belum Diisi' : t;
+        }
+
+        function calculateStatistics() {
+            let totalUang = 0;
+            let maxUang = 0;
+            let totalPotongan = 0;
+            let totalDiserahkan = 0;
+            groupedByKet = {};
+
+            const leaderboardBody = document.getElementById('leaderboardBody');
+            leaderboardBody.innerHTML = '';
+
+            globalData.forEach(item => {
+                totalUang += item.jumlahTotalNum;
+                totalPotongan += item.potonganNum;
+                totalDiserahkan += item.danaDiserahkanNum;
+                if (item.jumlahTotalNum > maxUang) maxUang = item.jumlahTotalNum;
+
+                const key = normalizeKetKey(item.keteranganAmbil);
+                if (!groupedByKet[key]) groupedByKet[key] = { count: 0, total: 0, totalPotongan: 0, totalDiserahkan: 0, items: [] };
+                groupedByKet[key].count++;
+                groupedByKet[key].total += item.jumlahTotalNum;
+                groupedByKet[key].totalPotongan += item.potonganNum;
+                groupedByKet[key].totalDiserahkan += item.danaDiserahkanNum;
+                groupedByKet[key].items.push(item);
+
+                // Leaderboard rows (clickable)
+                let tr = document.createElement('tr');
+                tr.className = "hover:bg-green-50 transition-colors cursor-pointer";
+                tr.onclick = () => { showMainTab('dashboard'); openDetail(item); };
+
+                let rankDisplay = item.peringkat;
+                if(item.peringkat === 1) rankDisplay = `<i class="fas fa-trophy text-yellow-500 text-lg"></i> 1`;
+                else if(item.peringkat === 2) rankDisplay = `<i class="fas fa-medal text-gray-400 text-lg"></i> 2`;
+                else if(item.peringkat === 3) rankDisplay = `<i class="fas fa-medal text-amber-700 text-lg"></i> 3`;
+
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap font-bold text-slate-700">${rankDisplay}</td>
+                    <td class="px-6 py-4 font-semibold text-slate-800">${item.nama}</td>
+                    <td class="px-6 py-4 text-slate-500">${item.kelasTahfizh || '-'} / ${item.kelasSD || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap font-bold text-bank-green text-right">${formatRupiah(item.jumlahTotalNum)}</td>
+                `;
+                leaderboardBody.appendChild(tr);
+            });
+
+            document.getElementById('statTotalUang').innerText = formatRupiah(totalUang);
+            document.getElementById('statMaxUang').innerText = formatRupiah(maxUang);
+            document.getElementById('statTotalSantri').innerText = globalData.length;
+            document.getElementById('statTotalPotongan').innerText = formatRupiah(totalPotongan);
+            document.getElementById('statDanaDiserahkan').innerText = formatRupiah(totalDiserahkan);
+
+            renderGroupedStats();
+        }
+
+        const KET_COLORS = [
+            { bg: 'bg-red-50', border: 'border-red-300', icon: 'bg-red-500', text: 'text-red-700' },
+            { bg: 'bg-green-50', border: 'border-green-300', icon: 'bg-green-600', text: 'text-green-700' },
+            { bg: 'bg-blue-50', border: 'border-blue-300', icon: 'bg-blue-500', text: 'text-blue-700' },
+            { bg: 'bg-yellow-50', border: 'border-yellow-300', icon: 'bg-yellow-500', text: 'text-yellow-700' },
+            { bg: 'bg-purple-50', border: 'border-purple-300', icon: 'bg-purple-500', text: 'text-purple-700' },
+            { bg: 'bg-pink-50', border: 'border-pink-300', icon: 'bg-pink-500', text: 'text-pink-700' },
+            { bg: 'bg-indigo-50', border: 'border-indigo-300', icon: 'bg-indigo-500', text: 'text-indigo-700' },
+            { bg: 'bg-orange-50', border: 'border-orange-300', icon: 'bg-orange-500', text: 'text-orange-700' },
+            { bg: 'bg-teal-50', border: 'border-teal-300', icon: 'bg-teal-500', text: 'text-teal-700' },
+            { bg: 'bg-slate-50', border: 'border-slate-300', icon: 'bg-slate-500', text: 'text-slate-700' },
+        ];
+
+        function renderGroupedStats() {
+            const container = document.getElementById('statGroupedContainer');
+            container.innerHTML = '';
+            const keys = Object.keys(groupedByKet).sort((a, b) => {
+                if (a === 'Belum Diisi') return 1;
+                if (b === 'Belum Diisi') return -1;
+                const na = parseFloat(a), nb = parseFloat(b);
+                if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                return a.localeCompare(b);
+            });
+            keys.forEach((key, idx) => {
+                const g = groupedByKet[key];
+                const c = KET_COLORS[idx % KET_COLORS.length];
+                const safeKey = key.replace(/"/g, '&quot;');
+                const div = document.createElement('div');
+                div.className = `${c.bg} ${c.border} border-2 rounded-xl p-4 cursor-pointer hover:shadow-md transition-all transform hover:-translate-y-0.5`;
+                div.onclick = () => openGroupModal(key);
+                div.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="${c.icon} text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wide">${safeKey}</span>
+                        <i class="fas fa-external-link-alt ${c.text} text-xs opacity-60"></i>
+                    </div>
+                    <p class="text-2xl font-extrabold ${c.text}">${g.count} <span class="text-xs font-medium text-slate-500">Orang</span></p>
+                    <p class="text-xs text-slate-600 mt-1">Tabungan: <span class="font-bold">${formatRupiah(g.total)}</span></p>
+                    <p class="text-xs text-slate-600">Diserahkan: <span class="font-bold text-bank-green">${formatRupiah(g.totalDiserahkan)}</span></p>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        let currentGroupKey = null;
+        function openGroupModal(key) {
+            currentGroupKey = key;
+            const g = groupedByKet[key];
+            if (!g) return;
+            const items = [...g.items].sort((a, b) => a.nama.localeCompare(b.nama));
+            document.getElementById('groupModalTitle').innerText = `Keterangan: ${key}`;
+            document.getElementById('groupModalSubtitle').innerText = `${g.count} santri · Total Tabungan ${formatRupiah(g.total)} · Potongan ${formatRupiah(g.totalPotongan)} · Diserahkan ${formatRupiah(g.totalDiserahkan)}`;
+            const tbody = document.getElementById('groupModalBody');
+            tbody.innerHTML = '';
+            items.forEach((it, i) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 cursor-pointer';
+                tr.onclick = () => { closeGroupModal(); showMainTab('dashboard'); openDetail(it); };
+                tr.innerHTML = `
+                    <td class="px-3 py-2">${i+1}</td>
+                    <td class="px-3 py-2 font-semibold">${it.nama}</td>
+                    <td class="px-3 py-2 text-slate-600">${it.kelasTahfizh || '-'} / ${it.kelasSD || '-'}</td>
+                    <td class="px-3 py-2 text-right font-bold text-bank-green">${formatRupiah(it.jumlahTotalNum)}</td>
+                    <td class="px-3 py-2 text-right text-red-600">${formatRupiah(it.potonganNum)}</td>
+                    <td class="px-3 py-2 text-right font-bold">${formatRupiah(it.danaDiserahkanNum)}</td>
+                    <td class="px-3 py-2 text-center"><span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:4px;font-weight:bold;font-size:11px;">${normalizeKetKey(it.keteranganAmbil)}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('groupModal').classList.remove('hidden');
+        }
+
+        function closeGroupModal() {
+            document.getElementById('groupModal').classList.add('hidden');
+        }
+
+        function printGroupList() {
+            if (!currentGroupKey) return;
+            const g = groupedByKet[currentGroupKey];
+            const items = [...g.items].sort((a, b) => a.nama.localeCompare(b.nama));
+            let rows = '';
+            items.forEach((it, i) => {
+                rows += `<tr>
+                    <td style="text-align:center;">${i+1}</td>
+                    <td style="font-weight:bold;">${it.nama}</td>
+                    <td style="text-align:center;">${it.kelasTahfizh || '-'} / ${it.kelasSD || '-'}</td>
+                    <td style="text-align:right;">${formatRupiah(it.jumlahTotalNum)}</td>
+                    <td style="text-align:right;color:#b91c1c;">${formatRupiah(it.potonganNum)}</td>
+                    <td style="text-align:right;font-weight:bold;">${formatRupiah(it.danaDiserahkanNum)}</td>
+                    <td style="text-align:center;"><span style="background:#dc2626;color:#fff;padding:3px 10px;border-radius:4px;font-weight:bold;font-size:11px;">${normalizeKetKey(it.keteranganAmbil)}</span></td>
+                </tr>`;
+            });
+            const html = `<!DOCTYPE html><html><head><title>Daftar - ${currentGroupKey}</title>
+                <style>
+                    body{font-family:Arial,sans-serif;padding:20px;}
+                    h2{color:#15803d;margin:0;}h4{margin:4px 0;color:#555;}
+                    .kop{text-align:center;margin-bottom:15px;border-bottom:2px solid #15803d;padding-bottom:10px;}
+                    .summary{background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;margin-bottom:15px;font-size:13px;}
+                    table{width:100%;border-collapse:collapse;font-size:12px;}
+                    th,td{border:1px solid #333;padding:6px 8px;}
+                    th{background:#eab308;color:#15803d;text-transform:uppercase;}
+                    .btn{position:fixed;top:10px;right:10px;padding:10px 18px;background:#15803d;color:#fff;border:none;border-radius:5px;font-weight:bold;cursor:pointer;}
+                    @media print{.btn{display:none;}@page{size:A4;margin:15mm;}}
+                </style></head><body>
+                <button class="btn" onclick="window.print()">Cetak</button>
+                <div class="kop">
+                    <h2>DAFTAR SANTRI - KETERANGAN: ${currentGroupKey}</h2>
+                    <h4>YAYASAN HUDA WAN NURUL QUR'ANI</h4>
+                </div>
+                <div class="summary">
+                    <b>Jumlah Santri:</b> ${g.count} orang &nbsp;|&nbsp;
+                    <b>Total Tabungan:</b> ${formatRupiah(g.total)} &nbsp;|&nbsp;
+                    <b>Total Potongan:</b> ${formatRupiah(g.totalPotongan)} &nbsp;|&nbsp;
+                    <b>Dana Diserahkan:</b> ${formatRupiah(g.totalDiserahkan)}
+                </div>
+                <table>
+                    <thead><tr>
+                        <th style="width:4%">No</th><th>Nama Siswa</th><th style="width:14%">Kelas (T/SD)</th>
+                        <th style="width:13%">Jumlah Tabungan</th><th style="width:11%">Potongan</th>
+                        <th style="width:13%">Diserahkan</th><th style="width:12%">Ket</th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                <script>window.onload=function(){setTimeout(function(){window.print();},400);}<\/script>
+                </body></html>`;
+            const w = window.open('', '_blank');
+            w.document.write(html); w.document.close();
+        }
+
+        function populateKelasFilters() {
+            const selectCetak = document.getElementById('filterKelasCetak');
+            const selectAbsen = document.getElementById('filterKelasAbsen');
+            let sortedKelas = Array.from(listKelas).sort();
+            sortedKelas.forEach(kelas => {
+                let opt1 = document.createElement('option'); opt1.value = kelas; opt1.textContent = kelas;
+                let opt2 = document.createElement('option'); opt2.value = kelas; opt2.textContent = kelas;
+                selectCetak.appendChild(opt1);
+                selectAbsen.appendChild(opt2);
+            });
+        }
+
+        // --- PENCARIAN (DASHBOARD) LOGIC ---
+        function handleSearchInput() {
+            const input = document.getElementById('searchInput');
+            const dropdown = document.getElementById('suggestionsDropdown');
+            const list = document.getElementById('suggestionList');
+            const query = input.value.toLowerCase().trim();
+
+            if (query.length > 0) {
+                document.getElementById('clearSearch').classList.remove('hidden');
+                const results = globalData.filter(item => item.nama.toLowerCase().includes(query));
+                
+                list.innerHTML = '';
+                if(results.length > 0) {
+                    results.forEach(item => {
+                        const li = document.createElement('li');
+                        li.className = "px-4 py-3 hover:bg-green-50 cursor-pointer flex justify-between items-center group transition-colors";
+                        let kelasLabel = item.kelasSD ? `SD: ${item.kelasSD}` : (item.kelasTahfizh ? `Tahfizh: ${item.kelasTahfizh}` : 'Belum ada kelas');
+                        li.innerHTML = `
+                            <div>
+                                <p class="font-bold text-slate-800 group-hover:text-bank-green">${item.nama} <span class="text-[10px] bg-yellow-100 text-yellow-800 px-1 rounded ml-1">Rank #${item.peringkat}</span></p>
+                                <p class="text-xs text-slate-500"><i class="fas fa-graduation-cap mr-1"></i> ${kelasLabel}</p>
+                            </div>
+                            <i class="fas fa-chevron-right text-slate-300 group-hover:text-bank-green"></i>
+                        `;
+                        li.onclick = () => openDetail(item);
+                        list.appendChild(li);
+                    });
+                } else {
+                    list.innerHTML = `<li class="px-4 py-4 text-center text-slate-500 text-sm">Santri tidak ditemukan</li>`;
+                }
+                dropdown.classList.remove('hidden');
+            } else {
+                document.getElementById('clearSearch').classList.add('hidden');
+                dropdown.classList.add('hidden');
+            }
+        }
+
+        function clearSearchInput() {
+            document.getElementById('searchInput').value = '';
+            handleSearchInput();
+            document.getElementById('searchInput').focus();
+        }
+
+        function openDetail(data) {
+            document.getElementById('searchSection').classList.add('hidden');
+            document.getElementById('suggestionsDropdown').classList.add('hidden');
+            const detailSection = document.getElementById('detailSection');
+            
+            let statusBadge = "";
+            let statusText = data.keteranganAmbil.trim();
+            if(statusText.toLowerCase().includes("ambil") && !statusText.toLowerCase().includes("tidak")) {
+                statusBadge = `<span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-red-100 text-red-700 border border-red-200"><i class="fas fa-hand-holding-usd mr-2"></i> ${statusText}</span>`;
+            } else if(statusText.toLowerCase().includes("tidak") || statusText === "") {
+                let txt = statusText || "Tidak Diambil";
+                statusBadge = `<span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-green-100 text-green-700 border border-green-200"><i class="fas fa-piggy-bank mr-2"></i> ${txt}</span>`;
+            } else {
+                statusBadge = `<span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-slate-100 text-slate-700 border border-slate-200">${statusText}</span>`;
+            }
+
+            document.getElementById('detailContent').innerHTML = `
+                <div class="bg-gradient-to-r from-bank-green to-green-800 text-white px-6 md:px-8 py-6 relative overflow-hidden flex justify-between items-start">
+                    <div>
+                        <h3 class="text-sm font-semibold text-bank-yellow-light uppercase tracking-wider mb-1">Rincian Tabungan Santri</h3>
+                        <h2 class="text-3xl md:text-4xl font-bold">${data.nama}</h2>
+                    </div>
+                    <div class="bg-bank-yellow text-bank-green px-4 py-2 rounded-lg text-center font-bold shadow-lg transform rotate-3">
+                        <p class="text-[10px] uppercase leading-none mb-1">Peringkat</p>
+                        <p class="text-2xl leading-none">#${data.peringkat}</p>
+                    </div>
+                </div>
+                <div class="p-6 md:p-8">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="space-y-6">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <h4 class="text-lg font-bold text-slate-700"><i class="fas fa-school mr-2 text-bank-green"></i> Data Kelas</h4>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                    <p class="text-xs text-slate-500 font-semibold uppercase mb-1">Kelas Tahfizh</p>
+                                    <p class="text-lg font-bold text-slate-800 mb-2">${data.kelasTahfizh || '-'}</p>
+                                    <div class="bg-white p-2 rounded text-xs border border-slate-100">
+                                        <span class="text-slate-400">Wali:</span> <span class="font-semibold text-slate-700">${data.waliKelasTahfizh || '-'}</span>
+                                    </div>
+                                </div>
+                                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                    <p class="text-xs text-slate-500 font-semibold uppercase mb-1">Kelas SD</p>
+                                    <p class="text-lg font-bold text-slate-800 mb-2">${data.kelasSD || '-'}</p>
+                                    <div class="bg-white p-2 rounded text-xs border border-slate-100">
+                                        <span class="text-slate-400">Wali:</span> <span class="font-semibold text-slate-700">${data.waliKelasSD || '-'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="pt-4">
+                                <p class="text-xs text-slate-500 font-semibold uppercase mb-3">Status Pencairan Tabungan</p>
+                                ${statusBadge}
+                            </div>
+                        </div>
+                        <div class="bg-bank-yellow/10 rounded-2xl p-6 border border-bank-yellow/30 flex flex-col justify-center">
+                            <h4 class="text-lg font-bold text-bank-green mb-6 flex items-center border-b border-bank-yellow/30 pb-3">
+                                <i class="fas fa-coins mr-2"></i> Rincian Saldo Matematis
+                            </h4>
+                            <div class="space-y-4 mb-6">
+                                <div class="flex justify-between items-center bg-white p-3 rounded-lg shadow-sm">
+                                    <span class="text-slate-600 font-medium">Saldo Tahun Lalu</span>
+                                    <span class="font-bold text-slate-800">${formatRupiah(data.tahunLaluNum)}</span>
+                                </div>
+                                <div class="flex justify-between items-center bg-white p-3 rounded-lg shadow-sm">
+                                    <span class="text-slate-600 font-medium">Tabungan Real</span>
+                                    <span class="font-bold text-slate-800">+ ${formatRupiah(data.tabunganRealNum)}</span>
+                                </div>
+                            </div>
+                            <div class="border-t border-dashed border-slate-300 pt-3 mb-4">
+                                <div class="flex justify-between items-center bg-white p-3 rounded-lg shadow-sm">
+                                    <span class="text-slate-600 font-medium">Jumlah Total</span>
+                                    <span class="font-bold text-slate-800">${formatRupiah(data.jumlahTotalNum)}</span>
+                                </div>
+                                <div class="flex justify-between items-center bg-red-50 p-3 rounded-lg shadow-sm mt-2 border border-red-200">
+                                    <span class="text-red-700 font-medium">Potongan</span>
+                                    <span class="font-bold text-red-700">- ${formatRupiah(data.potonganNum)}</span>
+                                </div>
+                                ${data.keterangan ? `<p class="text-xs italic text-slate-500 mt-2">Ket: ${data.keterangan}</p>` : ''}
+                            </div>
+                            <div class="border-t-2 border-dashed border-bank-green/50 pt-4 mt-2">
+                                <p class="text-sm text-bank-green font-bold uppercase tracking-wider mb-1 text-right">Dana Diserahkan</p>
+                                <p class="text-4xl md:text-5xl font-extrabold text-bank-green text-right">${formatRupiah(data.danaDiserahkanNum)}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            detailSection.classList.remove('hidden');
+        }
+
+        function closeDetail() {
+            document.getElementById('detailSection').classList.add('hidden');
+            document.getElementById('searchSection').classList.remove('hidden');
+            clearSearchInput();
+        }
+
+        // --- FILTER & CETAK BUKTI ---
+        function applyPrintFilters() {
+            const filterKelas = document.getElementById('filterKelasCetak').value;
+            const filterNama = document.getElementById('filterNama').value.toLowerCase().trim();
+            
+            printFilteredData = globalData.filter(item => {
+                let matchKelas = true;
+                if (filterKelas !== 'ALL') matchKelas = (item.kelasTahfizh === filterKelas || item.kelasSD === filterKelas);
+                let matchNama = item.nama.toLowerCase().includes(filterNama);
+                return matchKelas && matchNama;
+            });
+            renderPrintList();
+        }
+
+        function renderPrintList() {
+            const container = document.getElementById('printListContainer');
+            container.innerHTML = '';
+            
+            if (printFilteredData.length === 0) {
+                container.innerHTML = '<div class="p-8 text-center text-slate-500 font-medium">Data tidak ditemukan.</div>';
+                updateSelectedCountCetak();
+                return;
+            }
+
+            printFilteredData.forEach(item => {
+                const label = document.createElement('label');
+                label.className = "flex items-center p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 transition-colors";
+                label.innerHTML = `
+                    <div class="flex items-center h-5">
+                        <input type="checkbox" value="${item.id}" class="print-checkbox w-5 h-5 text-bank-green rounded transition-all" onchange="updateSelectedCountCetak()">
+                    </div>
+                    <div class="ml-4 flex-grow flex flex-col sm:flex-row sm:justify-between sm:items-center">
+                        <div>
+                            <span class="font-bold text-slate-800 block">${item.nama} <span class="ml-2 text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-full border border-yellow-200">#${item.peringkat}</span></span>
+                            <span class="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded mt-1 inline-block">Kelas: ${item.kelasSD || item.kelasTahfizh || '-'}</span>
+                        </div>
+                        <span class="font-extrabold text-bank-green mt-1 sm:mt-0">${formatRupiah(item.jumlahTotalNum)}</span>
+                    </div>
+                `;
+                container.appendChild(label);
+            });
+            document.getElementById('checkAll').checked = false;
+            updateSelectedCountCetak();
+        }
+
+        function toggleAllCheckboxes() {
+            const isChecked = document.getElementById('checkAll').checked;
+            document.querySelectorAll('.print-checkbox').forEach(cb => cb.checked = isChecked);
+            updateSelectedCountCetak();
+        }
+
+        function updateSelectedCountCetak() {
+            const count = document.querySelectorAll('.print-checkbox:checked').length;
+            document.getElementById('selectedCountCetak').innerText = count;
+            const total = document.querySelectorAll('.print-checkbox').length;
+            document.getElementById('checkAll').checked = (count === total && total > 0);
+        }
+
+        // --- FUNGSI CETAK BUKTI PENARIKAN (NEW TAB) ---
+        function previewAndPrint() {
+            const checkedBoxes = document.querySelectorAll('.print-checkbox:checked');
+            if (checkedBoxes.length === 0) { alert("Centang minimal 1 nama santri."); return; }
+
+            const selectedIds = Array.from(checkedBoxes).map(cb => cb.value);
+            // Array filter preserve order. Since globalData is sorted, dataToPrint is also sorted by Highest Savings
+            const dataToPrint = globalData.filter(item => selectedIds.includes(item.id));
+
+            let pagesHtml = '';
+            for (let i = 0; i < dataToPrint.length; i += 3) {
+                const chunk = dataToPrint.slice(i, i + 3);
+                let cardsHtml = '';
+                chunk.forEach(data => {
+                    cardsHtml += `
+                        <div class="card">
+                            <div class="header">
+                                <h2>YAYASAN HUDA WAN NURUL QUR'ANI</h2>
+                                <h3>KB-TK-SD INTERNATIONAL TAHFIZH QURAN</h3>
+                                <div>
+                                    <div class="badge">BUKTI PENARIKAN UANG TABUNGAN</div>
+                                    <div class="badge" style="background: #fef08a; color: #15803d; margin-left: 5px; border: 1px solid #15803d;">PERINGKAT #${data.peringkat}</div>
+                                </div>
+                            </div>
+                            
+                            <table class="data-table">
+                                <tr>
+                                    <td style="width: 30%; font-weight: bold;">Nama Siswa</td><td style="width: 2%;">:</td>
+                                    <td style="width: 68%; font-weight: bold; font-size: 14px;">${data.nama}</td>
+                                </tr>
+                                <tr><td>Kelas Tahfizh</td><td>:</td><td>${data.kelasTahfizh || '-'}</td></tr>
+                                <tr><td>Wali Kelas Tahfizh</td><td>:</td><td>${data.waliKelasTahfizh || '-'}</td></tr>
+                                <tr><td>Kelas SD</td><td>:</td><td>${data.kelasSD || '-'}</td></tr>
+                                <tr><td>Wali Kelas SD</td><td>:</td><td>${data.waliKelasSD || '-'}</td></tr>
+                            </table>
+
+                            <div class="divider"></div>
+
+                            <table class="finance-table">
+                                <tr><td style="width: 30%;">Tahun Lalu</td><td style="width: 2%;">:</td><td style="width: 68%;">${formatRupiah(data.tahunLaluNum)}</td></tr>
+                                <tr><td>Tabungan Real</td><td>:</td><td>${formatRupiah(data.tabunganRealNum)}</td></tr>
+                                <tr>
+                                    <td class="total-label">JUMLAH</td><td class="total-label">:</td>
+                                    <td class="total-value">${formatRupiah(data.jumlahTotalNum)}</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:#b91c1c;font-weight:bold;">Potongan</td><td>:</td>
+                                    <td style="color:#b91c1c;font-weight:bold;">- ${formatRupiah(data.potonganNum)}</td>
+                                </tr>
+                                <tr>
+                                    <td class="diserahkan-label">DANA DISERAHKAN</td><td class="diserahkan-label">:</td>
+                                    <td class="diserahkan-value">${formatRupiah(data.danaDiserahkanNum)}</td>
+                                </tr>
+                                ${data.keterangan ? `<tr><td style="padding-top:5px;">Keterangan</td><td style="padding-top:5px;">:</td><td style="padding-top:5px;font-style:italic;">${data.keterangan}</td></tr>` : ''}
+                                <tr>
+                                    <td style="padding-top: 6px;" colspan="3">
+                                        <span style="display:inline-block;background:#dc2626;color:#fff;padding:4px 14px;border-radius:4px;font-weight:bold;font-size:13px;letter-spacing:0.5px;">KET: ${(data.keteranganAmbil || 'BELUM DIISI').toUpperCase()}</span>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <div class="signature">
+                                <p>Penerima / Wali Santri,</p>
+                                <p style="margin-top: 40px;">( ........................................................ )</p>
+                            </div>
+                        </div>
+                    `;
+                });
+                pagesHtml += `<div class="a4-page">${cardsHtml}</div>`;
+            }
+
+            const printDocumentHtml = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Cetak Tabungan - YHWNQ</title>
+                    <style>
+                        * { box-sizing: border-box; }
+                        body { margin: 0; padding: 0; background-color: #525659; font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; }
+                        
+                        /* REVISI 1: Print Button yang lebih kecil & sticky menempel di atas */
+                        .print-btn-container {
+                            position: fixed; top: 0; left: 0; width: 100%; 
+                            background: rgba(255, 255, 255, 0.95); box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                            display: flex; justify-content: center; align-items: center; 
+                            padding: 10px; z-index: 1000; backdrop-filter: blur(5px);
+                        }
+                        .print-btn {
+                            background: #15803d; color: white; border: none; 
+                            padding: 8px 20px; font-size: 14px; font-weight: bold;
+                            border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+                        }
+                        .print-btn:hover { background: #166534; }
+                        
+                        /* Spacer agar page pertama tidak tertutup sticky bar */
+                        .spacer { height: 60px; width: 100%; }
+
+                        .a4-page {
+                            width: 210mm; height: 297mm; background: white; margin-bottom: 20px;
+                            padding: 10mm; box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                            display: flex; flex-direction: column; justify-content: space-between; page-break-after: always;
+                        }
+                        .card { height: 31%; border: 2px dashed #15803d; border-radius: 8px; padding: 15px; position: relative; }
+                        .header { text-align: center; margin-bottom: 10px; }
+                        .header h2 { margin: 0; font-size: 15px; color: #15803d; }
+                        .header h3 { margin: 3px 0 0 0; font-size: 13px; color: #d97706; }
+                        .badge { background: #15803d; color: white; display: inline-block; padding: 4px 15px; margin-top: 8px; font-weight: bold; font-size: 12px; border-radius: 4px; }
+                        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                        td { padding: 3px 0; vertical-align: top;}
+                        .divider { border-top: 1px dotted #999; margin: 8px 0; }
+                        .total-label { font-weight: bold; font-size: 13px; padding-top: 5px; border-top: 1px solid #ddd; }
+                        .total-value { font-weight: bold; font-size: 15px; padding-top: 5px; border-top: 1px solid #ddd;}
+                        .diserahkan-label { font-weight: bold; font-size: 13px; padding-top: 4px; color: #15803d; }
+                        .diserahkan-value { font-weight: bold; font-size: 16px; padding-top: 4px; color: #15803d; }
+                        .signature { position: absolute; bottom: 15px; right: 20px; text-align: center; font-size: 11px; }
+                        .signature p { margin: 0; }
+
+                        @media print {
+                            @page { size: A4 portrait; margin: 0; }
+                            body { background: white; display: block; }
+                            .print-btn-container, .spacer { display: none; }
+                            .a4-page { margin: 0; padding: 10mm; box-shadow: none; border: none; width: 210mm; height: 297mm; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="print-btn-container">
+                        <button class="print-btn" onclick="window.print()">
+                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/><path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z"/></svg>
+                            Cetak / Print
+                        </button>
+                    </div>
+                    <div class="spacer"></div>
+                    ${pagesHtml}
+                    <script>window.onload = function(){ setTimeout(function(){ window.print(); }, 500); }<\/script>
+                </body>
+                </html>
+            `;
+            const newWindow = window.open('', '_blank');
+            newWindow.document.write(printDocumentHtml);
+            newWindow.document.close();
+        }
+
+        // --- FUNGSI CETAK TABEL ABSEN (ADMIN) ---
+        function printAbsen() {
+            const filterKelas = document.getElementById('filterKelasAbsen').value;
+            
+            let dataAbsen = globalData;
+
+            if(filterKelas !== 'ALL') {
+                dataAbsen = globalData.filter(item => item.kelasTahfizh === filterKelas || item.kelasSD === filterKelas);
+            }
+
+            if(dataAbsen.length === 0) {
+                alert("Data kelas tersebut kosong."); return;
+            }
+
+            // Kelompokkan data berdasarkan Kelas Tahfizh
+            const groupedData = {};
+            dataAbsen.forEach(item => {
+                const kelas = item.kelasTahfizh || 'TANPA KELAS';
+                if(!groupedData[kelas]) groupedData[kelas] = [];
+                groupedData[kelas].push(item);
+            });
+
+            let pagesHtml = '';
+
+            // Buat HTML tabel untuk setiap kelas
+            for (const kelas in groupedData) {
+                const students = groupedData[kelas];
+                // Urutkan siswa berdasarkan nama sesuai abjad untuk absen
+                students.sort((a, b) => a.nama.localeCompare(b.nama));
+                
+                let rowsHtml = '';
+                let waliKelas = students[0].waliKelasTahfizh || '............................'; 
+                
+                students.forEach((data, i) => {
+                    rowsHtml += `
+                        <tr>
+                            <td style="text-align: center;">${i+1}</td>
+                            <td style="font-weight: bold;">${data.nama}</td>
+                            <td style="text-align: center;">${data.kelasTahfizh || '-'}</td>
+                            <td>${data.waliKelasTahfizh || '-'}</td>
+                            <td style="text-align: right; font-weight: bold;">${formatRupiah(data.jumlahTotalNum)}</td>
+                            <td style="text-align: center;"><span style="background:#dc2626;color:#fff;padding:3px 10px;border-radius:4px;font-weight:bold;font-size:11px;">${(data.keteranganAmbil || 'BELUM').toUpperCase()}</span></td>
+                            <td></td> <!-- Infaq Kosong -->
+                            <td></td> <!-- Tanda Tangan Kosong -->
+                        </tr>
+                    `;
+                });
+
+                pagesHtml += `
+                    <div class="page-break">
+                        <div class="kop">
+                            <h2>ABSENSI PENGAMBILAN TABUNGAN SANTRI</h2>
+                            <h4>YAYASAN HUDA WAN NURUL QUR'ANI</h4>
+                            <p style="margin:5px 0; font-weight:bold;">KELAS: ${kelas}</p>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 3%;">No</th>
+                                    <th style="width: 20%;">Nama Siswa</th>
+                                    <th style="width: 10%;">Kelas Tahfizh</th>
+                                    <th style="width: 15%;">Wali Kelas Tahfizh</th>
+                                    <th style="width: 12%;">Jumlah Tabungan</th>
+                                    <th style="width: 12%;">Ket. Ambil</th>
+                                    <th style="width: 10%;">Infaq</th>
+                                    <th style="width: 18%;">Tanda Tangan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHtml}
+                            </tbody>
+                        </table>
+                        
+                        <div class="signature-section">
+                            <table style="width: 100%; border: none; margin-top: 30px;">
+                                <tr>
+                                    <td style="border: none; text-align: center; width: 33%; vertical-align: top;">
+                                        <p>Mengetahui,</p>
+                                        <p style="margin-bottom: 60px;">Kepala Sekolah</p>
+                                        <p style="font-weight: bold; text-decoration: underline;">Nurul Ikfaini, S.Pd.SD., Gr</p>
+                                    </td>
+                                    <td style="border: none; text-align: center; width: 33%; vertical-align: top;">
+                                        <p>&nbsp;</p>
+                                        <p style="margin-bottom: 60px;">Koordinator Tahfizh</p>
+                                        <p style="font-weight: bold; text-decoration: underline;">Nasywa Haura Zayyanna, S.Pd.,</p>
+                                    </td>
+                                    <td style="border: none; text-align: center; width: 33%; vertical-align: top;">
+                                        <p>Penarik, ............................</p>
+                                        <p style="margin-bottom: 60px;">Wali Kelas Tahfizh</p>
+                                        <p style="font-weight: bold; text-decoration: underline;">${waliKelas}</p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const docHtml = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Absen Pengambilan Tabungan</title>
+                    <style>
+                        * { box-sizing: border-box; }
+                        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #525659; }
+                        .btn-print { position: fixed; top: 10px; right: 20px; padding: 10px 20px; background: #15803d; color: #fff; border: none; cursor: pointer; border-radius: 5px; font-weight: bold; z-index: 1000; }
+                        .btn-print:hover { background: #166534; }
+                        
+                        /* Container per kelas untuk dicetak terpisah */
+                        .page-break {
+                            background: white;
+                            padding: 20mm;
+                            margin: 0 auto 20px auto;
+                            width: 297mm; /* Lebar Kertas A4 Landscape */
+                            min-height: 210mm;
+                            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                            page-break-after: always; /* Paksa pisah halaman */
+                        }
+
+                        .kop { text-align: center; margin-bottom: 20px; }
+                        .kop h2 { margin: 0; color: #15803d; }
+                        .kop h4 { margin: 5px 0; color: #555; }
+                        
+                        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+                        th, td { border: 1px solid #000; padding: 6px 8px; vertical-align: middle; }
+                        th { background: #eab308; color: #15803d; text-transform: uppercase; }
+                        
+                        /* Khusus untuk area tanda tangan */
+                        .signature-section { page-break-inside: avoid; }
+                        .signature-section table, .signature-section th, .signature-section td { border: none !important; }
+                        .signature-section td { padding: 0; }
+                        .signature-section p { margin: 5px 0; font-size: 13px; }
+
+                        @media print {
+                            @page { size: A4 landscape; margin: 0; }
+                            body { background: white; padding: 0; }
+                            .btn-print { display: none; }
+                            .page-break { 
+                                margin: 0; 
+                                padding: 15mm; 
+                                box-shadow: none; 
+                                width: 100%; 
+                                height: auto;
+                                page-break-after: always; 
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <button class="btn-print" onclick="window.print()">Cetak (Landscape)</button>
+                    ${pagesHtml}
+                    <script>window.onload = function(){ setTimeout(function(){ window.print(); }, 500); }<\/script>
+                </body>
+                </html>
+            `;
+            const newWindow = window.open('', '_blank');
+            newWindow.document.write(docHtml);
+            newWindow.document.close();
+        }
+    </script>
+</body>
+</html>

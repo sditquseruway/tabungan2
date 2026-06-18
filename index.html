@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -19,6 +20,101 @@
                     }
                 }
             }
+        }
+
+        // --- FUNGSI CETAK KESELURUHAN (TANPA KOP PER-KELAS) ---
+        function printKeseluruhan() {
+            const selected = getCheckedKelas('Keseluruhan');
+            if (selected.length === 0) { alert('Centang minimal 1 kelas.'); return; }
+            const data = globalData.filter(item => selected.includes(item.kelasTahfizh) || selected.includes(item.kelasSD));
+            if (data.length === 0) { alert('Data kosong.'); return; }
+            const sorted = [...data].sort((a,b) => {
+                const ka = (a.kelasSD || a.kelasTahfizh || '');
+                const kb = (b.kelasSD || b.kelasTahfizh || '');
+                return ka.localeCompare(kb) || a.nama.localeCompare(b.nama);
+            });
+            let totalTab = 0, totalPot = 0, totalSerah = 0;
+            let rows = '';
+            sorted.forEach((it, i) => {
+                totalTab += it.jumlahTotalNum;
+                totalPot += it.potonganNum;
+                totalSerah += it.danaDiserahkanNum;
+                rows += `<tr>
+                    <td style="text-align:center;">${i+1}</td>
+                    <td style="font-weight:600;">${it.nama}</td>
+                    <td style="text-align:center;">${it.kelasSD || it.kelasTahfizh || '-'}</td>
+                    <td style="text-align:right;">${formatRupiah(it.jumlahTotalNum)}</td>
+                    <td style="text-align:right;color:#b91c1c;">${formatRupiah(it.potonganNum)}</td>
+                    <td style="text-align:right;font-weight:bold;">${formatRupiah(it.danaDiserahkanNum)}</td>
+                </tr>`;
+            });
+            const kelasLabel = selected.join(', ');
+            const html = `<!DOCTYPE html><html><head><title>Tabungan Siswa - Keseluruhan</title>
+                <style>
+                    *{box-sizing:border-box;}
+                    body{font-family:Arial,sans-serif;margin:0;padding:20px;background:#525659;}
+                    .btn{position:fixed;top:10px;right:20px;padding:10px 20px;background:#15803d;color:#fff;border:none;border-radius:5px;font-weight:bold;cursor:pointer;z-index:1000;}
+                    .sheet{background:#fff;width:210mm;min-height:297mm;margin:0 auto 20px;padding:15mm;box-shadow:0 0 10px rgba(0,0,0,.5);}
+                    .kop{text-align:center;border-bottom:3px double #15803d;padding-bottom:10px;margin-bottom:15px;}
+                    .kop h1{margin:0;color:#15803d;font-size:20px;}
+                    .kop h2{margin:4px 0;color:#15803d;font-size:16px;}
+                    .kop p{margin:2px 0;color:#555;font-size:12px;}
+                    table{width:100%;border-collapse:collapse;font-size:12px;}
+                    th,td{border:1px solid #333;padding:6px 8px;}
+                    th{background:#eab308;color:#15803d;text-transform:uppercase;font-size:11px;}
+                    tfoot td{background:#dcfce7;font-weight:bold;}
+                    .rekap{margin-top:20px;border:2px solid #15803d;border-radius:6px;padding:12px 16px;background:#f0fdf4;font-size:13px;}
+                    .rekap h3{margin:0 0 8px;color:#15803d;font-size:14px;}
+                    .rekap-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #86efac;}
+                    .rekap-row:last-child{border-bottom:none;font-size:15px;color:#15803d;}
+                    @media print{
+                        @page{size:A4 portrait;margin:12mm;}
+                        body{background:#fff;padding:0;}
+                        .btn{display:none;}
+                        .sheet{width:100%;min-height:auto;margin:0;padding:0;box-shadow:none;}
+                        thead{display:table-header-group;}
+                        tr{page-break-inside:avoid;}
+                    }
+                </style></head><body>
+                <button class="btn" onclick="window.print()">Cetak</button>
+                <div class="sheet">
+                    <div class="kop">
+                        <h1>TABUNGAN SISWA</h1>
+                        <h2>YAYASAN HUDA WAN NURUL QUR'ANI</h2>
+                        <p>KB-TK-SD INTERNATIONAL TAHFIZH QURAN</p>
+                        <p><b>Kelas:</b> ${kelasLabel}</p>
+                    </div>
+                    <table>
+                        <thead><tr>
+                            <th style="width:5%">No</th>
+                            <th>Nama Siswa</th>
+                            <th style="width:12%">Kelas</th>
+                            <th style="width:15%">Jumlah Tabungan</th>
+                            <th style="width:13%">Potongan</th>
+                            <th style="width:17%">Total Penyerahan</th>
+                        </tr></thead>
+                        <tbody>${rows}</tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3" style="text-align:right;">REKAP TOTAL KESELURUHAN</td>
+                                <td style="text-align:right;">${formatRupiah(totalTab)}</td>
+                                <td style="text-align:right;color:#b91c1c;">${formatRupiah(totalPot)}</td>
+                                <td style="text-align:right;color:#15803d;">${formatRupiah(totalSerah)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <div class="rekap">
+                        <h3><i>Rekapitulasi</i></h3>
+                        <div class="rekap-row"><span>Jumlah Santri</span><span><b>${sorted.length} Orang</b></span></div>
+                        <div class="rekap-row"><span>Total Jumlah Tabungan</span><span><b>${formatRupiah(totalTab)}</b></span></div>
+                        <div class="rekap-row"><span>Total Potongan</span><span style="color:#b91c1c;"><b>${formatRupiah(totalPot)}</b></span></div>
+                        <div class="rekap-row"><span><b>TOTAL TABUNGAN YANG AKAN DISERAHKAN</b></span><span><b>${formatRupiah(totalSerah)}</b></span></div>
+                    </div>
+                </div>
+                <script>window.onload=function(){setTimeout(function(){window.print();},500);}<\/script>
+                </body></html>`;
+            const w = window.open('', '_blank');
+            w.document.write(html); w.document.close();
         }
     </script>
     <style>
@@ -188,6 +284,9 @@
                     <button id="btnTabAbsen" onclick="switchAdminTab('absen')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-lg font-semibold transition-colors flex items-center">
                         <i class="fas fa-list-alt mr-2"></i> Cetak Absen Pengambilan
                     </button>
+                    <button id="btnTabKeseluruhan" onclick="switchAdminTab('keseluruhan')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-lg font-semibold transition-colors flex items-center">
+                        <i class="fas fa-table mr-2"></i> Cetak Keseluruhan
+                    </button>
                 </div>
             </div>
 
@@ -291,21 +390,42 @@
             <div id="panelAbsen" class="admin-panel hidden">
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                     <h3 class="font-bold text-slate-800 mb-4 text-lg border-b pb-2">Pengaturan Cetak Absen Pengambilan</h3>
-                    <div class="flex flex-col sm:flex-row gap-4 items-end">
-                        <div class="flex-grow">
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pilih Kelas</label>
-                            <select id="filterKelasAbsen" class="w-full p-3 rounded-lg border border-slate-300 focus:border-bank-green focus:outline-none bg-white">
-                                <option value="ALL">Semua Kelas</option>
-                                <!-- Injected via JS -->
-                            </select>
+                    <div class="mb-3 flex items-center justify-between">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Kelas (Centang)</label>
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleAllKelas('Absen', true)" class="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded font-semibold">Pilih Semua</button>
+                            <button onclick="toggleAllKelas('Absen', false)" class="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded font-semibold">Kosongkan</button>
                         </div>
-                        <button onclick="printAbsen()" class="bg-bank-green hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow transition-all flex items-center justify-center whitespace-nowrap">
-                            <i class="fas fa-file-excel mr-2"></i> Buat Halaman Cetak Absen
-                        </button>
                     </div>
+                    <div id="kelasCheckboxAbsen" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 p-3 border border-slate-200 rounded-lg bg-slate-50 max-h-72 overflow-y-auto mb-4"></div>
+                    <button onclick="printAbsen()" class="w-full bg-bank-green hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow transition-all flex items-center justify-center">
+                        <i class="fas fa-file-excel mr-2"></i> Buat Halaman Cetak Absen
+                    </button>
                     <div class="mt-4 p-4 bg-blue-50 text-blue-700 rounded-lg text-sm flex items-start">
                         <i class="fas fa-info-circle mt-0.5 mr-2"></i>
-                        <p>Format yang dicetak berupa tabel absen (*Landscape* A4) dengan kolom kosong untuk pengisian <b>Infaq</b> dan <b>Tanda Tangan</b> wali murid.</p>
+                        <p>Format yang dicetak berupa tabel absen (<b>Landscape A4</b>) dengan kolom kosong untuk pengisian <b>Infaq</b> dan <b>Tanda Tangan</b>. Di bawah tabel ditampilkan jumlah <b>Ambil</b> & <b>Tidak Ambil</b>. Untuk kelas <b>TK</b> tanda tangan Koordinator/Kepala Sekolah tidak ditampilkan & nama wali kelas dikosongkan.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Cetak Keseluruhan -->
+            <div id="panelKeseluruhan" class="admin-panel hidden">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-bold text-slate-800 mb-4 text-lg border-b pb-2">Cetak Tabungan Siswa - Keseluruhan</h3>
+                    <div class="mb-3 flex items-center justify-between">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Kelas (Centang)</label>
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleAllKelas('Keseluruhan', true)" class="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded font-semibold">Pilih Semua</button>
+                            <button onclick="toggleAllKelas('Keseluruhan', false)" class="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded font-semibold">Kosongkan</button>
+                        </div>
+                    </div>
+                    <div id="kelasCheckboxKeseluruhan" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 p-3 border border-slate-200 rounded-lg bg-slate-50 max-h-72 overflow-y-auto mb-4"></div>
+                    <button onclick="printKeseluruhan()" class="w-full bg-bank-green hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow transition-all flex items-center justify-center">
+                        <i class="fas fa-print mr-2"></i> Cetak Tabungan Keseluruhan
+                    </button>
+                    <div class="mt-4 p-4 bg-yellow-50 text-yellow-800 rounded-lg text-sm flex items-start">
+                        <i class="fas fa-info-circle mt-0.5 mr-2"></i>
+                        <p>Hanya satu kop <b>Tabungan Siswa</b> di atas. Tabel berisi: No, Nama Siswa, Kelas, Jumlah Tabungan, Potongan, Total Penyerahan. Di akhir tabel ditampilkan rekap total keseluruhan & total dana yang diserahkan.</p>
                     </div>
                 </div>
             </div>
@@ -340,20 +460,17 @@
 
         function switchAdminTab(panel) {
             document.querySelectorAll('.admin-panel').forEach(el => el.classList.add('hidden'));
-            document.getElementById('btnTabStatistik').classList.replace('bg-bank-green', 'bg-slate-100');
-            document.getElementById('btnTabStatistik').classList.replace('text-white', 'text-slate-700');
-            document.getElementById('btnTabAbsen').classList.replace('bg-bank-green', 'bg-slate-100');
-            document.getElementById('btnTabAbsen').classList.replace('text-white', 'text-slate-700');
-
-            if (panel === 'statistik') {
-                document.getElementById('panelStatistik').classList.remove('hidden');
-                document.getElementById('btnTabStatistik').classList.replace('bg-slate-100', 'bg-bank-green');
-                document.getElementById('btnTabStatistik').classList.replace('text-slate-700', 'text-white');
-            } else {
-                document.getElementById('panelAbsen').classList.remove('hidden');
-                document.getElementById('btnTabAbsen').classList.replace('bg-slate-100', 'bg-bank-green');
-                document.getElementById('btnTabAbsen').classList.replace('text-slate-700', 'text-white');
-            }
+            ['btnTabStatistik','btnTabAbsen','btnTabKeseluruhan'].forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.remove('bg-bank-green','text-white');
+                el.classList.add('bg-slate-100','text-slate-700');
+            });
+            const map = { statistik:['panelStatistik','btnTabStatistik'], absen:['panelAbsen','btnTabAbsen'], keseluruhan:['panelKeseluruhan','btnTabKeseluruhan'] };
+            const [panelId, btnId] = map[panel] || map.statistik;
+            document.getElementById(panelId).classList.remove('hidden');
+            const btn = document.getElementById(btnId);
+            btn.classList.remove('bg-slate-100','text-slate-700');
+            btn.classList.add('bg-bank-green','text-white');
         }
 
         function fetchData() {
@@ -619,14 +736,24 @@
 
         function populateKelasFilters() {
             const selectCetak = document.getElementById('filterKelasCetak');
-            const selectAbsen = document.getElementById('filterKelasAbsen');
+            const boxAbsen = document.getElementById('kelasCheckboxAbsen');
+            const boxKes = document.getElementById('kelasCheckboxKeseluruhan');
             let sortedKelas = Array.from(listKelas).sort();
             sortedKelas.forEach(kelas => {
                 let opt1 = document.createElement('option'); opt1.value = kelas; opt1.textContent = kelas;
-                let opt2 = document.createElement('option'); opt2.value = kelas; opt2.textContent = kelas;
                 selectCetak.appendChild(opt1);
-                selectAbsen.appendChild(opt2);
+                const safe = kelas.replace(/"/g,'&quot;');
+                boxAbsen.insertAdjacentHTML('beforeend', `<label class="flex items-center gap-2 bg-white border border-slate-200 rounded px-2 py-1.5 cursor-pointer hover:bg-green-50 text-sm"><input type="checkbox" class="kelas-cb-Absen w-4 h-4 text-bank-green" value="${safe}"><span class="truncate">${safe}</span></label>`);
+                boxKes.insertAdjacentHTML('beforeend', `<label class="flex items-center gap-2 bg-white border border-slate-200 rounded px-2 py-1.5 cursor-pointer hover:bg-green-50 text-sm"><input type="checkbox" class="kelas-cb-Keseluruhan w-4 h-4 text-bank-green" value="${safe}"><span class="truncate">${safe}</span></label>`);
             });
+        }
+
+        function toggleAllKelas(scope, val) {
+            document.querySelectorAll('.kelas-cb-' + scope).forEach(cb => cb.checked = val);
+        }
+
+        function getCheckedKelas(scope) {
+            return Array.from(document.querySelectorAll('.kelas-cb-' + scope + ':checked')).map(cb => cb.value);
         }
 
         // --- PENCARIAN (DASHBOARD) LOGIC ---
@@ -971,17 +1098,10 @@
 
         // --- FUNGSI CETAK TABEL ABSEN (ADMIN) ---
         function printAbsen() {
-            const filterKelas = document.getElementById('filterKelasAbsen').value;
-            
-            let dataAbsen = globalData;
-
-            if(filterKelas !== 'ALL') {
-                dataAbsen = globalData.filter(item => item.kelasTahfizh === filterKelas || item.kelasSD === filterKelas);
-            }
-
-            if(dataAbsen.length === 0) {
-                alert("Data kelas tersebut kosong."); return;
-            }
+            const selected = getCheckedKelas('Absen');
+            if (selected.length === 0) { alert('Centang minimal 1 kelas.'); return; }
+            let dataAbsen = globalData.filter(item => selected.includes(item.kelasTahfizh) || selected.includes(item.kelasSD));
+            if(dataAbsen.length === 0) { alert("Data kelas tersebut kosong."); return; }
 
             // Kelompokkan data berdasarkan Kelas Tahfizh
             const groupedData = {};
@@ -1000,8 +1120,14 @@
                 students.sort((a, b) => a.nama.localeCompare(b.nama));
                 
                 let rowsHtml = '';
-                let waliKelas = students[0].waliKelasTahfizh || '............................'; 
-                
+                const isTK = /\bTK\b/i.test(kelas);
+                let waliKelas = isTK ? '' : (students[0].waliKelasTahfizh || '............................');
+                let countAmbil = 0, countTidak = 0;
+                students.forEach(s => {
+                    const k = (s.keteranganAmbil || '').toLowerCase();
+                    if (/(tidak|tdk)/.test(k)) countTidak++;
+                    else if (/ambil/.test(k)) countAmbil++;
+                });
                 students.forEach((data, i) => {
                     rowsHtml += `
                         <tr>
@@ -1042,24 +1168,44 @@
                             </tbody>
                         </table>
                         
+                        <div class="rekap-ket">
+                            <table style="width:auto;margin-top:15px;font-size:13px;">
+                                <tr><td style="border:1px solid #000;padding:6px 14px;background:#fef9c3;font-weight:bold;">Jumlah AMBIL</td><td style="border:1px solid #000;padding:6px 14px;text-align:center;font-weight:bold;">${countAmbil} Orang</td></tr>
+                                <tr><td style="border:1px solid #000;padding:6px 14px;background:#fee2e2;font-weight:bold;">Jumlah TIDAK AMBIL</td><td style="border:1px solid #000;padding:6px 14px;text-align:center;font-weight:bold;">${countTidak} Orang</td></tr>
+                                <tr><td style="border:1px solid #000;padding:6px 14px;background:#dcfce7;font-weight:bold;">TOTAL SANTRI</td><td style="border:1px solid #000;padding:6px 14px;text-align:center;font-weight:bold;">${students.length} Orang</td></tr>
+                            </table>
+                        </div>
                         <div class="signature-section">
                             <table style="width: 100%; border: none; margin-top: 30px;">
                                 <tr>
+                                    ${isTK ? `
+                                    <td style="border:none;text-align:center;width:50%;vertical-align:top;">
+                                        <p>Penarik,</p>
+                                        <p style="margin-bottom: 60px;">............................</p>
+                                        <p style="font-weight: bold;">(........................................)</p>
+                                    </td>
+                                    <td style="border:none;text-align:center;width:50%;vertical-align:top;">
+                                        <p>&nbsp;</p>
+                                        <p style="margin-bottom: 60px;">Wali Kelas</p>
+                                        <p style="font-weight: bold;">(........................................)</p>
+                                    </td>
+                                    ` : `
                                     <td style="border: none; text-align: center; width: 33%; vertical-align: top;">
                                         <p>Mengetahui,</p>
                                         <p style="margin-bottom: 60px;">Kepala Sekolah</p>
-                                        <p style="font-weight: bold; text-decoration: underline;">Nurul Ikfaini, S.Pd.SD., Gr</p>
+                                        <p style="font-weight: bold;">(........................................)</p>
                                     </td>
                                     <td style="border: none; text-align: center; width: 33%; vertical-align: top;">
                                         <p>&nbsp;</p>
                                         <p style="margin-bottom: 60px;">Koordinator Tahfizh</p>
-                                        <p style="font-weight: bold; text-decoration: underline;">Nasywa Haura Zayyanna, S.Pd.,</p>
+                                        <p style="font-weight: bold;">(........................................)</p>
                                     </td>
                                     <td style="border: none; text-align: center; width: 33%; vertical-align: top;">
                                         <p>Penarik, ............................</p>
                                         <p style="margin-bottom: 60px;">Wali Kelas Tahfizh</p>
-                                        <p style="font-weight: bold; text-decoration: underline;">${waliKelas}</p>
+                                        <p style="font-weight: bold;">(........................................)</p>
                                     </td>
+                                    `}
                                 </tr>
                             </table>
                         </div>
